@@ -1,5 +1,3 @@
-use std::str::FromStr;
-
 use anchor_lang::{
     prelude::*,
     solana_program::native_token::LAMPORTS_PER_SOL,
@@ -13,6 +11,8 @@ use spl_tlv_account_resolution::{
     account::ExtraAccountMeta, seeds::Seed, state::ExtraAccountMetaList,
 };
 use spl_transfer_hook_interface::instruction::ExecuteInstruction;
+
+use crate::ID;
 
 #[derive(Accounts)]
 pub struct InitializeExtraAccountMetaListCtx<'info> {
@@ -54,6 +54,7 @@ pub fn initialize_extra_account_meta_list_handler(
     )?;
     // The `addExtraAccountsToInstruction` JS helper function resolving incorrectly
     let account_metas = vec![
+        ExtraAccountMeta::new_with_pubkey(&ID, false, false)?,
         ExtraAccountMeta::new_with_seeds(
             &[
                 Seed::Literal {
@@ -64,8 +65,7 @@ pub fn initialize_extra_account_meta_list_handler(
             false, // is_signer
             true,  // is_writable
         )?,
-        ExtraAccountMeta::new_external_pda_with_seeds(
-            10,
+        ExtraAccountMeta::new_with_seeds(
             &[
                 Seed::Literal {
                     bytes: "fee".as_bytes().to_vec(),
@@ -80,8 +80,7 @@ pub fn initialize_extra_account_meta_list_handler(
             false, // is_signer
             true,  // is_writable
         )?,
-        ExtraAccountMeta::new_external_pda_with_seeds(
-            10,
+        ExtraAccountMeta::new_with_seeds(
             &[
                 Seed::Literal {
                     bytes: "fee".as_bytes().to_vec(),
@@ -96,15 +95,14 @@ pub fn initialize_extra_account_meta_list_handler(
             false, // is_signer
             true,  // is_writable
         )?,
-        ExtraAccountMeta::new_external_pda_with_seeds(
-            10,
+        ExtraAccountMeta::new_with_seeds(
             &[
                 Seed::Literal {
                     bytes: "fee".as_bytes().to_vec(),
                 },
                 Seed::AccountKey { index: 1 },
                 Seed::AccountData {
-                    account_index: 6,
+                    account_index: 7,
                     data_index: 8,
                     length: 32,
                 },
@@ -113,11 +111,6 @@ pub fn initialize_extra_account_meta_list_handler(
             true,  // is_writable
         )?,
         ExtraAccountMeta::new_with_pubkey(&ctx.accounts.system_program.key(), false, false)?,
-        ExtraAccountMeta::new_with_pubkey(
-            &Pubkey::from_str("DRmZQ8udrLAwQVPvwSeSrUYmd2SKxKT4CRuraLzAsqZQ").unwrap(),
-            false,
-            false,
-        )?,
     ];
 
     // calculate account size

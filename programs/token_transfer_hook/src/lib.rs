@@ -1,6 +1,8 @@
 use anchor_lang::prelude::*;
 
+pub mod error;
 pub mod instructions;
+pub mod state;
 
 use spl_transfer_hook_interface::instruction::TransferHookInstruction;
 
@@ -17,6 +19,26 @@ pub mod token_transfer_hook {
         ctx: Context<InitializeExtraAccountMetaListCtx>,
     ) -> Result<()> {
         instructions::initialize_extra_meta::initialize_extra_account_meta_list_handler(ctx)
+    }
+
+    pub fn update_fee_account(
+        ctx: Context<UpdateFeeAccountCtx>,
+        address: Pubkey,
+        boss: Option<Pubkey>,
+        additional_claimed_fees: u64,
+        additional_unclaimed_fees: u64,
+    ) -> Result<()> {
+        instructions::update_fee_account::update_fee_account_handler(
+            ctx,
+            address,
+            boss,
+            additional_claimed_fees,
+            additional_unclaimed_fees,
+        )
+    }
+
+    pub fn update_fees(ctx: Context<UpdateFeesCtx>, fee: u64, amount_after_fee: u64) -> Result<()> {
+        instructions::update_fees::update_fees_handler(ctx, fee, amount_after_fee)
     }
 
     pub fn transfer_hook(ctx: Context<TransferHookCtx>, amount: u64) -> Result<()> {

@@ -12,6 +12,8 @@ use anchor_spl::{
     token_interface::TokenAccount,
 };
 
+use crate::ID;
+
 // Order of accounts matters for this struct.
 // The first 4 accounts are the accounts required for token transfer (source, mint, destination, owner)
 // Remaining accounts are the extra accounts required from the ExtraAccountMetaList account
@@ -37,6 +39,9 @@ pub struct TransferHookCtx<'info> {
         bump
     )]
     pub extra_account_meta_list: UncheckedAccount<'info>,
+    /// CHECK: Checked by cpi
+    #[account(address = ID)]
+    pub program: UncheckedAccount<'info>,
     #[account(
         mut,
         seeds = [b"pda_authority", mint.key().as_ref()], 
@@ -45,14 +50,12 @@ pub struct TransferHookCtx<'info> {
     /// CHECK: Checked by cpi
     pub pda_authority: SystemAccount<'info>,
     /// CHECK: Checked by cpi
-    pub source_fee_account: AccountInfo<'info>,
+    pub source_fee_account: UncheckedAccount<'info>,
     /// CHECK: Checked by cpi
-    pub destination_fee_account: AccountInfo<'info>,
+    pub destination_fee_account: UncheckedAccount<'info>,
     /// CHECK: Checked by cpi
-    pub boss_fee_account: AccountInfo<'info>,
+    pub boss_fee_account: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
-    /// CHECK: Checked by cpi
-    pub program: AccountInfo<'info>,
 }
 
 pub fn transfer_hook_handler(ctx: Context<TransferHookCtx>, amount: u64) -> Result<()> {
@@ -73,8 +76,9 @@ pub fn transfer_hook_handler(ctx: Context<TransferHookCtx>, amount: u64) -> Resu
     let seeds: &[&[u8]] = &[b"pda_authority".as_ref(), mint_key.as_ref(), bump];
     let signer_seeds = &[&seeds[..]];
 
+    // cpi to self
     let mut bytes_data = Vec::with_capacity(24);
-    bytes_data.extend([232, 253, 195, 247, 148, 212, 73, 222]);
+    bytes_data.extend([225, 27, 13, 6, 69, 84, 172, 191]);
     bytes_data.extend(fee.to_le_bytes());
     bytes_data.extend(amount.saturating_sub(fee).to_le_bytes());
 
@@ -102,7 +106,7 @@ pub fn transfer_hook_handler(ctx: Context<TransferHookCtx>, amount: u64) -> Resu
 
     invoke_signed(
         &Instruction {
-            program_id: ctx.accounts.program.key(),
+            program_id: ID,
             accounts,
             data: bytes_data,
         },
