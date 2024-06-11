@@ -8,7 +8,7 @@ use spl_transfer_hook_interface::instruction::TransferHookInstruction;
 
 pub use instructions::*;
 
-declare_id!("HTdsvYSXbpLEvP5bzYVWEczMVK5VyKRhqRSx3E5c4VYV");
+declare_id!("FNeSgS1XbVmbxZgNBHfpXxh6aivuTSf3hSCncT6QDm9T");
 
 #[program]
 pub mod token_transfer_hook {
@@ -30,8 +30,8 @@ pub mod token_transfer_hook {
         ctx: Context<UpdateFeeAccountCtx>,
         address: Pubkey,
         boss: Option<Pubkey>,
-        additional_claimed_fees: u64,
-        additional_unclaimed_fees: u64,
+        additional_claimed_fees: Option<u64>,
+        additional_unclaimed_fees: Option<u64>,
     ) -> Result<()> {
         instructions::update_fee_account::update_fee_account_handler(
             ctx,

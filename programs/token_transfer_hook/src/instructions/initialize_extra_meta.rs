@@ -11,13 +11,12 @@ use spl_tlv_account_resolution::{
 };
 use spl_transfer_hook_interface::instruction::ExecuteInstruction;
 
-use crate::ID;
+use crate::{state::FeeAccount, ID};
 
 #[derive(Accounts)]
 pub struct InitializeExtraAccountMetaListCtx<'info> {
     #[account(mut)]
     pub payer: Signer<'info>,
-
     /// CHECK: ExtraAccountMetaList Account, must use these seeds
     #[account(
         mut,
@@ -32,6 +31,12 @@ pub struct InitializeExtraAccountMetaListCtx<'info> {
     )]
     /// CHECK:
     pub pda_authority: SystemAccount<'info>,
+    #[account(mut)]
+    pub minter_fee_account: AccountLoader<'info, FeeAccount>,
+    #[account(mut)]
+    pub authority_fee_account: AccountLoader<'info, FeeAccount>,
+    #[account(mut)]
+    pub program_fee_account: AccountLoader<'info, FeeAccount>,
     pub mint: InterfaceAccount<'info, Mint>,
     pub token_program: Interface<'info, TokenInterface>,
     pub associated_token_program: Program<'info, AssociatedToken>,
@@ -42,6 +47,16 @@ pub fn initialize_extra_account_meta_list_handler(
     ctx: Context<InitializeExtraAccountMetaListCtx>,
     lamports: u64,
 ) -> Result<()> {
+    let mut minter_fee_account = ctx.accounts.minter_fee_account.load_mut()?;
+    minter_fee_account.extra_meta_bump = ctx.bumps.extra_account_meta_list;
+    minter_fee_account.pda_authority_bump = ctx.bumps.pda_authority;
+    let mut authority_fee_account = ctx.accounts.authority_fee_account.load_mut()?;
+    authority_fee_account.extra_meta_bump = ctx.bumps.extra_account_meta_list;
+    authority_fee_account.pda_authority_bump = ctx.bumps.pda_authority;
+    let mut program_fee_account = ctx.accounts.program_fee_account.load_mut()?;
+    program_fee_account.extra_meta_bump = ctx.bumps.extra_account_meta_list;
+    program_fee_account.pda_authority_bump = ctx.bumps.pda_authority;
+
     transfer(
         CpiContext::new(
             ctx.accounts.system_program.to_account_info(),

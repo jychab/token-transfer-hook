@@ -12,13 +12,13 @@ pub struct UpdateFeesCtx<'info> {
     #[account(
         mut,
         seeds = [b"pda_authority", mint.key().as_ref()],
-        bump,
+        bump = source_fee_account.load()?.pda_authority_bump,
     )]
     pub payer: Signer<'info>,
     #[account(
         mut,
         seeds = [b"fee", mint.key().as_ref(), source_token.owner.as_ref()],
-        bump
+        bump = source_fee_account.load()?.bump,
     )]
     pub source_fee_account: AccountLoader<'info, FeeAccount>,
     #[account(
@@ -30,11 +30,9 @@ pub struct UpdateFeesCtx<'info> {
     )]
     pub destination_fee_account: AccountLoader<'info, FeeAccount>,
     #[account(
-        init_if_needed,
-        payer = payer,
-        space = FEE_ACCOUNT_SIZE,
+        mut,
         seeds = [b"fee", mint.key().as_ref(), source_fee_account.load()?.boss.as_ref()],
-        bump
+        bump = boss_fee_account.load()?.bump
     )]
     pub boss_fee_account: AccountLoader<'info, FeeAccount>,
     pub system_program: Program<'info, System>,
@@ -55,6 +53,9 @@ pub fn update_fees_handler(
             .load_mut()
             .or(ctx.accounts.destination_fee_account.load_init())?;
         destination_fee_account.boss = ctx.accounts.source_token.owner;
+        destination_fee_account.extra_meta_bump = source_fee_account.extra_meta_bump;
+        destination_fee_account.pda_authority_bump = source_fee_account.pda_authority_bump;
+        destination_fee_account.bump = ctx.bumps.destination_fee_account;
         destination_boss = Some(destination_fee_account.boss);
     }
     if ctx.accounts.source_token.amount == 0 {
@@ -68,6 +69,7 @@ pub fn update_fees_handler(
     boss_fee_account.unclaimed_fees += fee;
 
     emit_cpi!(TransferEvent {
+        mint: ctx.accounts.mint.key(),
         source: ctx.accounts.source_token.owner,
         source_boss: source_fee_account.boss,
         destination: ctx.accounts.destination_token.owner,

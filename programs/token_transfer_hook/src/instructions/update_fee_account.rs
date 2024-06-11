@@ -6,7 +6,6 @@ use crate::{
     error::TokenTransferHook,
     state::{FeeAccount, FeeUpdateEvent, FEE_ACCOUNT_SIZE, TOKEN_CREATOR_PROGRAM_ID},
 };
-
 #[event_cpi]
 #[derive(Accounts)]
 #[instruction(address:Pubkey)]
@@ -32,8 +31,8 @@ pub fn update_fee_account_handler(
     ctx: Context<UpdateFeeAccountCtx>,
     address: Pubkey,
     boss: Option<Pubkey>,
-    additional_claimed_fees: u64,
-    additional_unclaimed_fees: u64,
+    additional_claimed_fees: Option<u64>,
+    additional_unclaimed_fees: Option<u64>,
 ) -> Result<()> {
     // only allow this method to be invoked by the token creator program
     let instruction =
@@ -51,14 +50,22 @@ pub fn update_fee_account_handler(
 
     if let Some(new_boss) = boss {
         fee_account.boss = new_boss;
-        fee_account.unclaimed_fees = 0;
-        fee_account.claimed_fees = 0
+    }
+    if let Some(claimed_fees) = additional_claimed_fees {
+        fee_account.claimed_fees += claimed_fees;
     } else {
-        fee_account.claimed_fees += additional_claimed_fees;
-        fee_account.unclaimed_fees += additional_unclaimed_fees;
+        fee_account.claimed_fees = 0;
+    }
+    if let Some(unclaimed_fees) = additional_unclaimed_fees {
+        fee_account.unclaimed_fees += unclaimed_fees;
+    } else {
+        fee_account.unclaimed_fees = 0;
     }
 
+    fee_account.bump = ctx.bumps.fee_account;
+
     emit_cpi!(FeeUpdateEvent {
+        mint: ctx.accounts.mint.key(),
         address: address,
         boss: fee_account.boss,
         unclaimed_fees: fee_account.unclaimed_fees,

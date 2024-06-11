@@ -12,7 +12,7 @@ use anchor_spl::{
     token_interface::TokenAccount,
 };
 
-use crate::ID;
+use crate::{state::FeeAccount, ID};
 
 // Order of accounts matters for this struct.
 // The first 4 accounts are the accounts required for token transfer (source, mint, destination, owner)
@@ -36,21 +36,20 @@ pub struct TransferHookCtx<'info> {
     /// CHECK: ExtraAccountMetaList Account,
     #[account(
         seeds = [b"extra-account-metas", mint.key().as_ref()], 
-        bump
+        bump = source_fee_account.load()?.extra_meta_bump
     )]
     pub extra_account_meta_list: UncheckedAccount<'info>,
     /// CHECK: Checked by cpi
-    #[account(address = ID)]
     pub program: UncheckedAccount<'info>,
     #[account(
         mut,
         seeds = [b"pda_authority", mint.key().as_ref()], 
-        bump
+        bump = source_fee_account.load()?.pda_authority_bump
     )]
     /// CHECK: Checked by cpi
     pub pda_authority: SystemAccount<'info>,
     /// CHECK: Checked by cpi
-    pub source_fee_account: UncheckedAccount<'info>,
+    pub source_fee_account: AccountLoader<'info, FeeAccount>,
     /// CHECK: Checked by cpi
     pub destination_fee_account: UncheckedAccount<'info>,
     /// CHECK: Checked by cpi
@@ -73,7 +72,7 @@ pub fn transfer_hook_handler(ctx: Context<TransferHookCtx>, amount: u64) -> Resu
         0
     };
 
-    let bump = &[ctx.bumps.pda_authority];
+    let bump = &[ctx.accounts.source_fee_account.load()?.pda_authority_bump];
     let mint_key = ctx.accounts.mint.key();
     let seeds: &[&[u8]] = &[b"pda_authority".as_ref(), mint_key.as_ref(), bump];
     let signer_seeds = &[&seeds[..]];
