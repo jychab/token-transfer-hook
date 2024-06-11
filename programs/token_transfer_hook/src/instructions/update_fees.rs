@@ -1,10 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenAccount};
 
-use crate::{
-    state::{FeeAccount, FEE_ACCOUNT_SIZE},
-    ID,
-};
+use crate::state::{FeeAccount, FEE_ACCOUNT_SIZE, TOKEN_CREATOR_PROGRAM_ID};
 
 #[derive(Accounts)]
 pub struct UpdateFeesCtx<'info> {
@@ -56,10 +53,8 @@ pub fn update_fees_handler(
         destination_fee_account.boss = ctx.accounts.source_token.owner;
     }
     if ctx.accounts.source_token.amount == 0 {
-        let (authority, _bump) =
-            Pubkey::find_program_address(&[b"authority", ctx.accounts.mint.key().as_ref()], &ID);
         let source_fee_account = &mut ctx.accounts.source_fee_account.load_mut()?;
-        source_fee_account.boss = authority;
+        source_fee_account.boss = TOKEN_CREATOR_PROGRAM_ID;
     }
     let boss_fee_account = &mut ctx
         .accounts

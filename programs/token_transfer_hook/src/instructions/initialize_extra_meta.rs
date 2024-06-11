@@ -1,6 +1,5 @@
 use anchor_lang::{
     prelude::*,
-    solana_program::native_token::LAMPORTS_PER_SOL,
     system_program::{create_account, transfer, CreateAccount, Transfer},
 };
 use anchor_spl::{
@@ -41,6 +40,7 @@ pub struct InitializeExtraAccountMetaListCtx<'info> {
 
 pub fn initialize_extra_account_meta_list_handler(
     ctx: Context<InitializeExtraAccountMetaListCtx>,
+    lamports: u64,
 ) -> Result<()> {
     transfer(
         CpiContext::new(
@@ -50,7 +50,7 @@ pub fn initialize_extra_account_meta_list_handler(
                 to: ctx.accounts.pda_authority.to_account_info(),
             },
         ),
-        LAMPORTS_PER_SOL,
+        lamports,
     )?;
     // The `addExtraAccountsToInstruction` JS helper function resolving incorrectly
     let account_metas = vec![

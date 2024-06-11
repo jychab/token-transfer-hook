@@ -15,12 +15,17 @@ pub mod token_transfer_hook {
 
     use super::*;
 
+    // lamports here is used to fund the pda that will pay for the creation of PDAs during transfer hook
     pub fn initialize_extra_account_meta_list(
         ctx: Context<InitializeExtraAccountMetaListCtx>,
+        lamports: u64,
     ) -> Result<()> {
-        instructions::initialize_extra_meta::initialize_extra_account_meta_list_handler(ctx)
+        instructions::initialize_extra_meta::initialize_extra_account_meta_list_handler(
+            ctx, lamports,
+        )
     }
 
+    // this method is only allowed to be called from the token creator program
     pub fn update_fee_account(
         ctx: Context<UpdateFeeAccountCtx>,
         address: Pubkey,
@@ -37,6 +42,7 @@ pub mod token_transfer_hook {
         )
     }
 
+    // this method should only be cpi by transfer_hook
     pub fn update_fees(ctx: Context<UpdateFeesCtx>, fee: u64, amount_after_fee: u64) -> Result<()> {
         instructions::update_fees::update_fees_handler(ctx, fee, amount_after_fee)
     }
