@@ -111,6 +111,13 @@ pub fn initialize_extra_account_meta_list_handler(
             true,  // is_writable
         )?,
         ExtraAccountMeta::new_with_pubkey(&ctx.accounts.system_program.key(), false, false)?,
+        ExtraAccountMeta::new_with_seeds(
+            &[Seed::Literal {
+                bytes: "__event_authority".as_bytes().to_vec(),
+            }],
+            false, // is_signer
+            false, // is_writable
+        )?,
     ];
 
     // calculate account size

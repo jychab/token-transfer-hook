@@ -56,6 +56,8 @@ pub struct TransferHookCtx<'info> {
     /// CHECK: Checked by cpi
     pub boss_fee_account: UncheckedAccount<'info>,
     pub system_program: Program<'info, System>,
+    /// CHECK: Checked by cpi
+    pub event_authority: UncheckedAccount<'info>,
 }
 
 pub fn transfer_hook_handler(ctx: Context<TransferHookCtx>, amount: u64) -> Result<()> {
@@ -91,6 +93,8 @@ pub fn transfer_hook_handler(ctx: Context<TransferHookCtx>, amount: u64) -> Resu
         ctx.accounts.destination_fee_account.to_account_info(),
         ctx.accounts.boss_fee_account.to_account_info(),
         ctx.accounts.system_program.to_account_info(),
+        ctx.accounts.event_authority.to_account_info(),
+        ctx.accounts.program.to_account_info(),
     ];
 
     let accounts = vec![
@@ -102,6 +106,8 @@ pub fn transfer_hook_handler(ctx: Context<TransferHookCtx>, amount: u64) -> Resu
         AccountMeta::new(account_infos[5].key(), false),
         AccountMeta::new(account_infos[6].key(), false),
         AccountMeta::new_readonly(account_infos[7].key(), false),
+        AccountMeta::new_readonly(account_infos[8].key(), false),
+        AccountMeta::new_readonly(account_infos[9].key(), false),
     ];
 
     invoke_signed(

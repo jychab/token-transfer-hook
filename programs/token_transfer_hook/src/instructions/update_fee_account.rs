@@ -4,9 +4,10 @@ use spl_token_2022::cmp_pubkeys;
 
 use crate::{
     error::TokenTransferHook,
-    state::{FeeAccount, FEE_ACCOUNT_SIZE, TOKEN_CREATOR_PROGRAM_ID},
+    state::{FeeAccount, FeeUpdateEvent, FEE_ACCOUNT_SIZE, TOKEN_CREATOR_PROGRAM_ID},
 };
 
+#[event_cpi]
 #[derive(Accounts)]
 #[instruction(address:Pubkey)]
 pub struct UpdateFeeAccountCtx<'info> {
@@ -29,7 +30,7 @@ pub struct UpdateFeeAccountCtx<'info> {
 
 pub fn update_fee_account_handler(
     ctx: Context<UpdateFeeAccountCtx>,
-    _address: Pubkey,
+    address: Pubkey,
     boss: Option<Pubkey>,
     additional_claimed_fees: u64,
     additional_unclaimed_fees: u64,
@@ -56,5 +57,12 @@ pub fn update_fee_account_handler(
         fee_account.claimed_fees += additional_claimed_fees;
         fee_account.unclaimed_fees += additional_unclaimed_fees;
     }
+
+    emit_cpi!(FeeUpdateEvent {
+        address: address,
+        boss: fee_account.boss,
+        unclaimed_fees: fee_account.unclaimed_fees,
+        claimed_fees: fee_account.claimed_fees
+    });
     Ok(())
 }

@@ -1,8 +1,9 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token_interface::{Mint, TokenAccount};
 
-use crate::state::{FeeAccount, FEE_ACCOUNT_SIZE, TOKEN_CREATOR_PROGRAM_ID};
+use crate::state::{FeeAccount, TransferEvent, FEE_ACCOUNT_SIZE, TOKEN_CREATOR_PROGRAM_ID};
 
+#[event_cpi]
 #[derive(Accounts)]
 pub struct UpdateFeesCtx<'info> {
     pub source_token: InterfaceAccount<'info, TokenAccount>,
@@ -10,7 +11,7 @@ pub struct UpdateFeesCtx<'info> {
     pub destination_token: InterfaceAccount<'info, TokenAccount>,
     #[account(
         mut,
-        seeds = [b"pda_authority", mint.key().as_ref()], 
+        seeds = [b"pda_authority", mint.key().as_ref()],
         bump,
     )]
     pub payer: Signer<'info>,
@@ -44,6 +45,9 @@ pub fn update_fees_handler(
     fee: u64,
     amount_after_fee: u64,
 ) -> Result<()> {
+    let source_fee_account = &mut ctx.accounts.source_fee_account.load_mut()?;
+    let current_boss = source_fee_account.boss;
+    let mut destination_boss = None;
     if ctx.accounts.destination_token.amount == amount_after_fee {
         let destination_fee_account = &mut ctx
             .accounts
@@ -51,9 +55,9 @@ pub fn update_fees_handler(
             .load_mut()
             .or(ctx.accounts.destination_fee_account.load_init())?;
         destination_fee_account.boss = ctx.accounts.source_token.owner;
+        destination_boss = Some(destination_fee_account.boss);
     }
     if ctx.accounts.source_token.amount == 0 {
-        let source_fee_account = &mut ctx.accounts.source_fee_account.load_mut()?;
         source_fee_account.boss = TOKEN_CREATOR_PROGRAM_ID;
     }
     let boss_fee_account = &mut ctx
@@ -62,5 +66,15 @@ pub fn update_fees_handler(
         .load_mut()
         .or(ctx.accounts.boss_fee_account.load_init())?;
     boss_fee_account.unclaimed_fees += fee;
+
+    emit_cpi!(TransferEvent {
+        source: ctx.accounts.source_token.owner,
+        source_boss: source_fee_account.boss,
+        destination: ctx.accounts.destination_token.owner,
+        destination_boss: destination_boss,
+        destination_token_account: ctx.accounts.destination_token.key(),
+        boss: current_boss,
+        boss_unclaimed_fee: boss_fee_account.unclaimed_fees,
+    });
     Ok(())
 }
