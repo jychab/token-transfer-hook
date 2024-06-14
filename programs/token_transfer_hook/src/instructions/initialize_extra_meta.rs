@@ -1,17 +1,17 @@
 use anchor_lang::{
     prelude::*,
-    system_program::{create_account, transfer, CreateAccount, Transfer},
+    system_program::{create_account, CreateAccount},
 };
-use anchor_spl::{
-    associated_token::AssociatedToken,
-    token_interface::{Mint, TokenInterface},
-};
+use anchor_spl::{associated_token::AssociatedToken, token::Token, token_interface::Mint};
 use spl_tlv_account_resolution::{
     account::ExtraAccountMeta, seeds::Seed, state::ExtraAccountMetaList,
 };
 use spl_transfer_hook_interface::instruction::ExecuteInstruction;
 
-use crate::{state::FeeAccount, ID};
+use crate::{
+    state::{FeeAccount, FEE_ACCOUNT_SIZE},
+    ID,
+};
 
 #[derive(Accounts)]
 pub struct InitializeExtraAccountMetaListCtx<'info> {
@@ -24,52 +24,60 @@ pub struct InitializeExtraAccountMetaListCtx<'info> {
         bump
     )]
     pub extra_account_meta_list: AccountInfo<'info>,
+    pub mint: InterfaceAccount<'info, Mint>,
     #[account(
-        mut,
-        seeds = [b"pda_authority", mint.key().as_ref()], 
+        seeds = [b"redeem", mint.key().as_ref()],
         bump
     )]
-    /// CHECK:
+    pub redeem_mint: InterfaceAccount<'info, Mint>,
+    /// CHECK: Checked by Cpi
+    #[account(
+        init,
+        payer = payer,
+        space = FEE_ACCOUNT_SIZE,
+        seeds = [b"fee", mint.key().as_ref(), payer.key().as_ref()],
+        bump,
+    )]
+    pub payer_fee_account: AccountLoader<'info, FeeAccount>,
+    /// CHECK: Checked by cpi
+    #[account(
+        init,
+        payer = payer,
+        space = FEE_ACCOUNT_SIZE,
+        seeds = [b"fee", mint.key().as_ref(), pda_authority.key().as_ref()],
+        bump,
+    )]
+    pub pda_fee_account: AccountLoader<'info, FeeAccount>,
+    #[account(
+        seeds = [b"pda_authority", mint.key().as_ref()],
+        bump,
+    )]
     pub pda_authority: SystemAccount<'info>,
-    #[account(mut)]
-    pub minter_fee_account: AccountLoader<'info, FeeAccount>,
-    #[account(mut)]
-    pub authority_fee_account: AccountLoader<'info, FeeAccount>,
-    #[account(mut)]
-    pub program_fee_account: AccountLoader<'info, FeeAccount>,
-    pub mint: InterfaceAccount<'info, Mint>,
-    pub token_program: Interface<'info, TokenInterface>,
-    pub associated_token_program: Program<'info, AssociatedToken>,
     pub system_program: Program<'info, System>,
 }
 
 pub fn initialize_extra_account_meta_list_handler(
     ctx: Context<InitializeExtraAccountMetaListCtx>,
-    lamports: u64,
 ) -> Result<()> {
-    let mut minter_fee_account = ctx.accounts.minter_fee_account.load_mut()?;
-    minter_fee_account.extra_meta_bump = ctx.bumps.extra_account_meta_list;
-    minter_fee_account.pda_authority_bump = ctx.bumps.pda_authority;
-    let mut authority_fee_account = ctx.accounts.authority_fee_account.load_mut()?;
-    authority_fee_account.extra_meta_bump = ctx.bumps.extra_account_meta_list;
-    authority_fee_account.pda_authority_bump = ctx.bumps.pda_authority;
-    let mut program_fee_account = ctx.accounts.program_fee_account.load_mut()?;
-    program_fee_account.extra_meta_bump = ctx.bumps.extra_account_meta_list;
-    program_fee_account.pda_authority_bump = ctx.bumps.pda_authority;
+    let payer_fee_account = &mut ctx.accounts.payer_fee_account.load_init()?;
+    payer_fee_account.boss = ID;
+    payer_fee_account.bump = ctx.bumps.payer_fee_account;
+    payer_fee_account.pda_authority_bump = ctx.bumps.pda_authority;
+    payer_fee_account.extra_meta_bump = ctx.bumps.extra_account_meta_list;
+    payer_fee_account.redeem_mint_bump = ctx.bumps.redeem_mint;
 
-    transfer(
-        CpiContext::new(
-            ctx.accounts.system_program.to_account_info(),
-            Transfer {
-                from: ctx.accounts.payer.to_account_info(),
-                to: ctx.accounts.pda_authority.to_account_info(),
-            },
-        ),
-        lamports,
-    )?;
+    let pda_fee_account = &mut ctx.accounts.pda_fee_account.load_init()?;
+    pda_fee_account.boss = ID;
+    pda_fee_account.bump = ctx.bumps.payer_fee_account;
+    pda_fee_account.pda_authority_bump = ctx.bumps.pda_authority;
+    pda_fee_account.extra_meta_bump = ctx.bumps.extra_account_meta_list;
+    pda_fee_account.redeem_mint_bump = ctx.bumps.redeem_mint;
+
     // The `addExtraAccountsToInstruction` JS helper function resolving incorrectly
     let account_metas = vec![
-        ExtraAccountMeta::new_with_pubkey(&ID, false, false)?,
+        ExtraAccountMeta::new_with_pubkey(&AssociatedToken::id(), false, false)?,
+        ExtraAccountMeta::new_with_pubkey(&Token::id(), false, false)?,
+        ExtraAccountMeta::new_with_pubkey(&ctx.accounts.system_program.key, false, false)?,
         ExtraAccountMeta::new_with_seeds(
             &[
                 Seed::Literal {
@@ -113,26 +121,29 @@ pub fn initialize_extra_account_meta_list_handler(
         ExtraAccountMeta::new_with_seeds(
             &[
                 Seed::Literal {
-                    bytes: "fee".as_bytes().to_vec(),
+                    bytes: "redeem".as_bytes().to_vec(),
                 },
                 Seed::AccountKey { index: 1 },
-                Seed::AccountData {
-                    account_index: 7,
-                    data_index: 8,
-                    length: 32,
-                },
             ],
             false, // is_signer
             true,  // is_writable
         )?,
-        ExtraAccountMeta::new_with_pubkey(&ctx.accounts.system_program.key(), false, false)?,
-        ExtraAccountMeta::new_with_seeds(
-            &[Seed::Literal {
-                bytes: "__event_authority".as_bytes().to_vec(),
-            }],
+        ExtraAccountMeta::new_with_pubkey(&ID, false, false)?, // todo: blocked by spl libary
+        ExtraAccountMeta::new_external_pda_with_seeds(
+            5,
+            &[
+                Seed::AccountData {
+                    account_index: 9,
+                    data_index: 8,
+                    length: 32,
+                },
+                Seed::AccountKey { index: 6 },
+                Seed::AccountKey { index: 11 },
+            ],
             false, // is_signer
-            false, // is_writable
+            true,  // is_writable
         )?,
+        ExtraAccountMeta::new_with_pubkey(&ID, false, false)?,
     ];
 
     // calculate account size

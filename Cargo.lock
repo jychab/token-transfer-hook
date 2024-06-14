@@ -2503,7 +2503,6 @@ dependencies = [
  "anchor-lang",
  "anchor-spl",
  "bytemuck",
- "solana-program",
  "spl-tlv-account-resolution 0.4.0",
  "spl-token-2022 0.9.0",
  "spl-transfer-hook-interface 0.3.0",

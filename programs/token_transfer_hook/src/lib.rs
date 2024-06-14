@@ -18,33 +18,53 @@ pub mod token_transfer_hook {
     // lamports here is used to fund the pda that will pay for the creation of PDAs during transfer hook
     pub fn initialize_extra_account_meta_list(
         ctx: Context<InitializeExtraAccountMetaListCtx>,
-        lamports: u64,
     ) -> Result<()> {
-        instructions::initialize_extra_meta::initialize_extra_account_meta_list_handler(
-            ctx, lamports,
+        instructions::initialize_extra_meta::initialize_extra_account_meta_list_handler(ctx)
+    }
+
+    pub fn create_mint(
+        ctx: Context<CreateMintCtx>,
+        random_key: Pubkey,
+        fee_basis_pts: u16,
+        max_fee: u64,
+        decimals: u8,
+    ) -> Result<()> {
+        instructions::create_mint::create_mint_handler(
+            ctx,
+            random_key,
+            fee_basis_pts,
+            max_fee,
+            decimals,
         )
     }
 
-    // this method is only allowed to be called from the token creator program
-    pub fn update_fee_account(
-        ctx: Context<UpdateFeeAccountCtx>,
-        address: Pubkey,
-        boss: Option<Pubkey>,
-        additional_claimed_fees: Option<u64>,
-        additional_unclaimed_fees: Option<u64>,
+    pub fn redeem_mint<'info>(ctx: Context<'_, '_, '_, 'info, RedeemMintCtx<'info>>) -> Result<()> {
+        instructions::redeem_mint::redeem_mint_handler(ctx)
+    }
+
+    pub fn create_mint_metadata(
+        ctx: Context<CreateMintMetadataCtx>,
+        lamports: u64,
+        name: String,
+        symbol: String,
+        uri: String,
     ) -> Result<()> {
-        instructions::update_fee_account::update_fee_account_handler(
-            ctx,
-            address,
-            boss,
-            additional_claimed_fees,
-            additional_unclaimed_fees,
+        instructions::create_mint_metadata::create_mint_metadata_handler(
+            ctx, lamports, name, symbol, uri,
         )
+    }
+
+    pub fn mint_to(ctx: Context<MintCtx>, amount: u64) -> Result<()> {
+        instructions::mint::mint_to_handler(ctx, amount)
     }
 
     // this method should only be cpi by transfer_hook
-    pub fn update_fees(ctx: Context<UpdateFeesCtx>, fee: u64, amount_after_fee: u64) -> Result<()> {
-        instructions::update_fees::update_fees_handler(ctx, fee, amount_after_fee)
+    pub fn transfer_fees(
+        ctx: Context<TransferFeesCtx>,
+        fees: u64,
+        amount_after_fee: u64,
+    ) -> Result<()> {
+        instructions::transfer_fees::transfer_fees_handler(ctx, fees, amount_after_fee)
     }
 
     pub fn transfer_hook(ctx: Context<TransferHookCtx>, amount: u64) -> Result<()> {

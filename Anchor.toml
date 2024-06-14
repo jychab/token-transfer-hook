@@ -5,13 +5,13 @@ seeds = false
 skip-lint = false
 
 [programs.localnet]
-token_transfer_hook = "HTdsvYSXbpLEvP5bzYVWEczMVK5VyKRhqRSx3E5c4VYV"
+token_transfer_hook = "FNeSgS1XbVmbxZgNBHfpXxh6aivuTSf3hSCncT6QDm9T"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
-cluster = "devnet"
+cluster = "localnet"
 wallet = "~/.config/solana/id.json"
 
 [scripts]

@@ -40,7 +40,11 @@ pub struct TransferHookCtx<'info> {
     )]
     pub extra_account_meta_list: UncheckedAccount<'info>,
     /// CHECK: Checked by cpi
-    pub program: UncheckedAccount<'info>,
+    pub associated_token_program: UncheckedAccount<'info>,
+    /// CHECK: Checked by cpi
+    pub token_program: UncheckedAccount<'info>,
+    /// CHECK: Checked by cpi
+    pub system_program: UncheckedAccount<'info>,
     #[account(
         mut,
         seeds = [b"pda_authority", mint.key().as_ref()], 
@@ -49,14 +53,21 @@ pub struct TransferHookCtx<'info> {
     /// CHECK: Checked by cpi
     pub pda_authority: SystemAccount<'info>,
     /// CHECK: Checked by cpi
+    #[account(mut)]
     pub source_fee_account: AccountLoader<'info, FeeAccount>,
     /// CHECK: Checked by cpi
+    #[account(mut)]
     pub destination_fee_account: UncheckedAccount<'info>,
     /// CHECK: Checked by cpi
-    pub boss_fee_account: UncheckedAccount<'info>,
-    pub system_program: Program<'info, System>,
+    #[account(mut)]
+    pub redeem_mint: UncheckedAccount<'info>,
     /// CHECK: Checked by cpi
-    pub event_authority: UncheckedAccount<'info>,
+    pub boss: UncheckedAccount<'info>,
+    /// CHECK: Checked by cpi
+    #[account(mut)]
+    pub boss_redemption_token_account: UncheckedAccount<'info>,
+    /// CHECK: Checked by cpi
+    pub program: UncheckedAccount<'info>,
 }
 
 pub fn transfer_hook_handler(ctx: Context<TransferHookCtx>, amount: u64) -> Result<()> {
@@ -79,7 +90,7 @@ pub fn transfer_hook_handler(ctx: Context<TransferHookCtx>, amount: u64) -> Resu
 
     // cpi to self
     let mut bytes_data = Vec::with_capacity(24);
-    bytes_data.extend([225, 27, 13, 6, 69, 84, 172, 191]);
+    bytes_data.extend([103, 60, 61, 79, 56, 61, 76, 49]);
     bytes_data.extend(fee.to_le_bytes());
     bytes_data.extend(amount.saturating_sub(fee).to_le_bytes());
 
@@ -90,10 +101,12 @@ pub fn transfer_hook_handler(ctx: Context<TransferHookCtx>, amount: u64) -> Resu
         ctx.accounts.pda_authority.to_account_info(),
         ctx.accounts.source_fee_account.to_account_info(),
         ctx.accounts.destination_fee_account.to_account_info(),
-        ctx.accounts.boss_fee_account.to_account_info(),
+        ctx.accounts.redeem_mint.to_account_info(),
+        ctx.accounts.boss.to_account_info(),
+        ctx.accounts.boss_redemption_token_account.to_account_info(),
+        ctx.accounts.associated_token_program.to_account_info(),
         ctx.accounts.system_program.to_account_info(),
-        ctx.accounts.event_authority.to_account_info(),
-        ctx.accounts.program.to_account_info(),
+        ctx.accounts.token_program.to_account_info(),
     ];
 
     let accounts = vec![
@@ -105,8 +118,10 @@ pub fn transfer_hook_handler(ctx: Context<TransferHookCtx>, amount: u64) -> Resu
         AccountMeta::new(account_infos[5].key(), false),
         AccountMeta::new(account_infos[6].key(), false),
         AccountMeta::new_readonly(account_infos[7].key(), false),
-        AccountMeta::new_readonly(account_infos[8].key(), false),
+        AccountMeta::new(account_infos[8].key(), false),
         AccountMeta::new_readonly(account_infos[9].key(), false),
+        AccountMeta::new_readonly(account_infos[10].key(), false),
+        AccountMeta::new_readonly(account_infos[11].key(), false),
     ];
 
     invoke_signed(
