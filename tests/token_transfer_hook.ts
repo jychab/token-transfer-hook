@@ -8,6 +8,7 @@ import {
   createAssociatedTokenAccountInstruction,
   createTransferCheckedWithTransferHookInstruction,
   getAssociatedTokenAddressSync,
+  getOrCreateAssociatedTokenAccount,
 } from "@solana/spl-token";
 import { TokenMetadata, pack } from "@solana/spl-token-metadata";
 import {
@@ -17,7 +18,6 @@ import {
   sendAndConfirmTransaction,
 } from "@solana/web3.js";
 import { TokenTransferHook } from "../target/types/token_transfer_hook";
-import { getOrCreateAssociatedTokenAccount } from "./helper";
 
 describe("transfer-hook", () => {
   // Configure the client to use the local cluster.
